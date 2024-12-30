@@ -1,0 +1,12 @@
+Apache Kafka is an open-source distributed event streaming platform used by thousands of companies for high-performance data pipelines, streaming analytics, data integration, and mission-critical applications. (LinkedIn)
+
+Problem Statement:
+
+Zomato -> Place Order -> Get live location of rider -> Rider goes from point A to B and every second that movement is emit to customer ie Live feed -> After it deliver they do analytics (Time taken to deliver)
+
+Design Same Feature:
+1) Get rider current location of rider
+2) Send that to Zomato's server (Insert in DB with timestamp) and then send it to customer
+
+Can this work?
+In Rider's device afer every second
