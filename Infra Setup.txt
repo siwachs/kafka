@@ -1,0 +1,5 @@
+Admin - Infra setup Create Topics and Partitions
+
+Producers - Produce Messages
+
+Consumers - Consume the message

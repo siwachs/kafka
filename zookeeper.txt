@@ -1,0 +1,17 @@
+A distributed system is a system where multiple computers (or nodes) work together to perform a task. These computers are connected via a network, and they communicate and coordinate with each other. Examples include cloud services, large websites, and systems like Google, Facebook, or Amazon.
+
+Why do you need Zookeeper in a Distributed System?
+In a distributed system, many computers are working together, which can lead to challenges like:
+
+1)Coordinating tasks: Making sure different parts of the system don’t conflict or overlap.
+2)Configuration: Keeping all the computers updated with the same settings or configurations.
+3)Tracking nodes: Keeping track of which computer is doing what and where services are located.
+4)Leader election: Sometimes, one computer must be the "leader" to make decisions. Zookeeper helps choose and manage this leader.
+
+What is Zookeeper?
+Zookeeper is a tool that helps solve these coordination and management problems in distributed systems. It ensures:
+
+1)Synchronization: Makes sure tasks happen in order.
+2)Configuration management: Keeps all systems updated with the same settings.
+3)Leader election: Helps decide which node is the "leader" to avoid conflicts.
+4)Fault tolerance: If one node fails, the system keeps working properly.

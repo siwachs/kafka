@@ -1,0 +1,167 @@
+Apache Kafka is an open-source distributed event streaming platform used by thousands of companies for high-performance data pipelines, streaming analytics, data integration, and mission-critical applications. (LinkedIn)
+
+Problem Statement:
+
+Zomato -> Place Order -> Get live location of rider -> Rider goes from point A to B and every second that movement is emit to customer ie Live feed -> After it deliver they do analytics (Time taken to deliver)
+
+Design Same Feature:
+1) Get rider current location of rider
+2) Send that to Zomato's server (Insert in DB with timestamp) and then send it to customer
+
+Can this work?
+In Rider's device afer every second get current location and send it to server and Insert into DB
+
+We get -> 12:00PM, 12:00:01, 12:00:02...
+and these updates goes to customer and log remain in DB to get analytics we use aggregation.
+
+Problem?
+yes. these data insert after every second for a single rider and we have 1000's of riders sending location data.
+In that case DB failed after a minute.
+
+In here DB OPS (operations per second) exceed.
+Example for 100 rider we do 100 insertion for every 1 seconds.
+
+The DB througput is less.
+througput is operations per seconds or amount of data process through a system at a given time.
+
+
+So this above solution failed completly.
+
+Other example Discord server.
+Let say that server has 5700 memebers.
+And they chat simuntanously in realtime.
+
+Client  Client  Client
+1)Send chat to server. The server persist it in DB.
+2)And after insertion this message emit to every other members and same for other users too.
+
+Let say when we insert in DB it takes 200ms time.
+This system is not realtime at all because we have 200ms + server Delay = ~800ms time.
+And in here OPS is high so DB failed.
+
+Other example Ola -> Realtime feed of driver in here services used are Fare calculation, Driver speed calculation (Analytics), Current location of driver.
+
+In that case lot of service want to consume that data and each service have its own table. (these services do ops on DB simuntanously so in that case 100% DB down and this is for one driver only)
+
+
+
+Kafka (aka Message Broker)
+Has High throughput
+
+It can process one lakh or more records per seconds.
+In Kafka insertion and fetching millions of records is easy.
+
+Qes: If that is true why we need DB?
+Kafka has high throughput but storage is temprary (No storage). But DB is persistent.
+And in DB we can query and index the data but not in kafka.
+
+Solution is Kafka + DB.
+
+Example Ula/Uber.
+
+Driver -> is moving and we have 1 Laks drivers and they produce data after every 1 second and we run on postgrss server.
+Direct communication with it gives us throughput problem.
+
+Solution: Create kafka service in middle of Drivers and Server.
+
+And this data insert into kafka.
+Now thsese are called producers because they produce data.
+Inside Kafka we have consumers.
+
+Who can be consumer.
+We have multiple services in Uber like fare calculation, Realtime loacation, Speed moniter.
+
+Now these services can consume kafka's topics.
+And they fetch data from Kafa and do a Bulk insert in DB.
+
+In this let say it take 2seconds. No problem because in DB we only have 1 transaction and the data for these services are consumed through kafka.
+
+In Zomato Producer are Zomato rider and and consumer are customer (Live location) and Zomato's server.
+
+
+
+
+Kafa Internals
+
+Kafka's Server -> Producers produce data in Kafka (On LHS) -> Consumer (On RHS) which consume message.
+
+Inside Kafka we have topics -> Let say we have A and B.
+Topic is Logical partition of message.
+Example -> Like whatsapp group made for a specefic topic.
+
+In here Zomato's case -> Topics are Rider's Update, Other can be Hotels's Update.
+This specify that all Rider's update go to Topic A and and Hotels's Update goes to Topic B. (ie we partition data)
+
+And now Consumer subscribe/listen on these topics.
+Producer when produce message it tells where to insert that message wether to insert on message A or B.
+
+Now a Problem -> N messages comes in Topics and in here we get message clutter into that topic then it can be further divide into partitions.
+
+So in here we use DB partitions let say DB A and DB B we write data on DB A and DB B on conditions so that it became easy to query.
+Same can be do in Kafa's topics.
+Ex: we can partition based on location to split.
+
+And on partition we have consume let say consumer A consume on location A and Consumer B consume on location B.
+
+Now Recap. 
+
+Producers -> Kafka -> Inside kafka we have Topics -> Inside Topics we have partitions (these partition works on Indexes) let say A-> 0, B->1 , C->2, D->3 and we have to write a logic how thse partitions work -> Consumer.
+
+The Producer have a logic to tell which partition to use.
+Consumer -> Kafka tell that consumer all the partitions consumed by that consumer. (In that case we have only one consumer). Means kafka do auto balancing. And Now a Consumer 2 Add then Kafka again do auto balancing. (It is equal allocation)
+
+But let say i have 4 partitions and 5 consumer comes then everyone get one partition but 5 don't get any partition. And in here 5th consumer became Idle.
+
+Now Again -> Kafka -> 1 Topic -> 2 partitions and we have one consumer -> Then in case that consumer get two partitions.
+Again 2 consumer self balancing one for each. Consumer 3 comes then what happen it beccame Idle.
+I want that Consumer 3 try to consume partition 1 (Not Possible).
+ie 1 consumer can consume multiple partitions but one partition can only be consumed by one consumer.
+
+Consumer A -> P1, P2, P3... (A consumer can consume multiple partition)
+But P1 -> C1, C2...   (can not possible a partition only be consumed by one consumer)
+
+
+Solution to this is (Consumer Gropups)
+
+Kafka -> Topic -> P1, P2, P3, P4. -> Consumer G1 -> Have only one consumer.
+
+A consumer by default in consumer group.
+In here on consumer consuming all the partitions.
+
+And now two consumer in a group.
+P1, P2 -> G1's C1, C2 ...
+
+One group have 4 consumers so auto balancing.
+And  now 5th consumer comes then it became Idle.
+
+Now we have G2 having C1.
+P1 -> G1 C1, P2 -> G1 C2, P3 -> G1 C3, P4 -> G1 C4, G1 C4 Idle
+
+Group 2
+Auto Balancing all partitions assign to G2's C1
+
+ie Self balancing happen on Group level.
+In group a partition does not have multiple consumers.
+
+
+
+Qes: Why do this?
+We have Queue and PubSub Architecture.
+
+In Queue we have one Producer and one Consumer. (RabitMQ have a queue system)
+
+In PubSub we have one producer and multiple consumers.
+
+In Queue system we do processing and put it in queue and other side fetch it. But in PubSub one Produce and multiple consume it.
+
+Kafka is Queue and PubSub both.
+How?
+
+we want queue in Kafka -> we have 4 partitions and we use only one group having 4 consumers with auto balancing we get one to one mapping with this we get queue. (ie no of consumers = no of partitions) And for PubSub model create more groups.
+
+
+Now Why need Zookeeper?
+Need in auto balancing and multiple replica creation. Kafka internally use zookeeper.
+
+
+Kafka -> create multiple replica and multiple partition and consumer self balancing all of them is managed by Kafka whcich internally use zookeeper.
